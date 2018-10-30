@@ -8,3 +8,6 @@ add-sa:
 
 create-centos7-pvc:
 	bash create-minikube-pvc.sh centos7 8.1G /var/tmp/centos7.raw | kubectl apply -f -
+
+start-minikube:
+	minikube start --vm-driver=kvm2 --memory 12000 --cpus 8
