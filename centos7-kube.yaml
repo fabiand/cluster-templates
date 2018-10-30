@@ -19,7 +19,7 @@ objects:
 - apiVersion: kubevirt.io/v1alpha2
   kind: VirtualMachine
   metadata:
-    name: ${NAME}
+    name: ${VMNAME}
   spec:
     running: true
     template:
@@ -61,14 +61,14 @@ objects:
         - name: cloudinitvolume
           cloudInitNoCloud:
             secretRef:
-              name: kubenode-bootstrap
+              name: kubenode-bootstrap-for-cluster-${CLUSTERNAME}
         - serviceAccount:
             serviceAccountName: cluster-creator
           name: serviceaccount
 - apiVersion: v1
   kind: Secret
   metadata:
-    name: kubenode-bootstrap
+    name: kubenode-bootstrap-for-cluster-${CLUSTERNAME}
   stringData:
     userdata: |
       #cloud-config
@@ -131,7 +131,7 @@ objects:
           apiVersion: v1
           kind: Secret
           metadata:
-            name: kubevirt-kube-cluster-config
+            name: kubevirt-kube-cluster-config-for-cluster-${CLUSTERNAME}
           stringData:
             master: $HOSTNAME
             joinCommand: |
@@ -143,7 +143,7 @@ objects:
         
         else
         
-          kGetConfig() { sudo kubectl get secret kubevirt-kube-cluster-config $@ ; }
+          kGetConfig() { sudo kubectl get secret kubevirt-kube-cluster-config-for-cluster-${CLUSTERNAME} $@ ; }
           getJoinCmd() { kGetConfig -o=jsonpath='{.data.joinCommand}' | base64 -d ; }
           JOIN_CMD=""
           while [[ -z $JOIN_CMD ]];
@@ -156,7 +156,7 @@ objects:
         
         fi
 parameters:
-- name: NAME
+- name: VMNAME
   description: Name of the new VM
   generate: expression
   from: "kubenode-[a-z0-9]{6}"
@@ -164,5 +164,8 @@ parameters:
 - name: PVCNAME
   description: Name of the PVC with the disk image
   required: true
+- name: CLUSTERNAME
+  description: Name of the cluster to create or join
+  value: kubernetes
 - name: SSH_PUBKEY
   description: Public key to grant access to
