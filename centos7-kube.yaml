@@ -39,10 +39,6 @@ objects:
               volumeName: cloudinitvolume
             - disk:
                 bus: virtio
-              name: cm
-              volumeName: configmapvolume
-            - disk:
-                bus: virtio
               name: sa
               volumeName: serviceaccount
             interfaces:
@@ -66,11 +62,8 @@ objects:
           cloudInitNoCloud:
             secretRef:
               name: kubenode-bootstrap
-        - configMap:
-            name: kubevirt-kube-cluster-config
-          name: configmapvolume
         - serviceAccount:
-            serviceAccountName: kubevirt-privileged
+            serviceAccountName: cluster-creator
           name: serviceaccount
 - apiVersion: v1
   kind: Secret
@@ -152,7 +145,7 @@ objects:
         
           kGetConfig() { sudo kubectl get secret kubevirt-kube-cluster-config $@ ; }
           getJoinCmd() { kGetConfig -o=jsonpath='{.data.joinCommand}' | base64 -d ; }
-          JOIN_CMD=
+          JOIN_CMD=""
           while [[ -z $JOIN_CMD ]];
           do
             echo -n .
