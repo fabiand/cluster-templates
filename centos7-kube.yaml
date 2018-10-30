@@ -45,11 +45,18 @@ objects:
                 bus: virtio
               name: sa
               volumeName: serviceaccount
+            interfaces:
+            - bridge: {}
+              name: default
+              model: e1000
             rng: {}
           resources:
             requests:
               memory: 3G
         terminationGracePeriodSeconds: 0
+        networks:
+        - name: default
+          pod: {}
         volumes:
         - name: rootvolume
           ephemeral:
