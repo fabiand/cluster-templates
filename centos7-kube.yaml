@@ -21,7 +21,7 @@ objects:
   metadata:
     name: ${NAME}
   spec:
-    running: false
+    running: true
     template:
       spec:
         domain:
