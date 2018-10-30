@@ -48,7 +48,9 @@ objects:
             rng: {}
           resources:
             requests:
-              memory: 3G
+              memory: 4G
+            limits:
+              memory: 5G
         terminationGracePeriodSeconds: 0
         networks:
         - name: default

@@ -7,7 +7,9 @@ add-sa:
 	kubectl create rolebinding cluster-creator-is-kubevirt-privileged  --clusterrole=kubevirt-privileged --user=cluster-creator
 
 create-centos7-pvc:
-	bash create-minikube-pvc.sh centos7 8.1G /var/tmp/centos7.raw | kubectl apply -f -
+	bash create-minikube-pvc.sh centos7 8.1G /var/tmp/centos7-pv | kubectl apply -f -
 
 start-minikube:
-	minikube start --vm-driver=kvm2 --memory 12000 --cpus 8
+	minikube start --vm-driver=kvm2 --memory 12000 --cpus 8 --kubernetes-version v1.11.4
+	minikube addons enable heapster
+	minikube addons enable metrics-server
