@@ -93,7 +93,16 @@ objects:
         set -ex
       
         id
-      
+
+        add_under_ctx() {
+          # Mount under cluster SA
+          mkdir -p /var/run/secrets/kubernetes.io/serviceaccount/
+          mount /dev/disk/by-id/virtio-underk8ssa /var/run/secrets/kubernetes.io/serviceaccount/
+          kubectl config set-cluster under --server=https://kubernetes.default.svc.cluster.local --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          kubectl config set-credentials under --token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+          kubectl config set-context under --cluster=under --namespace=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace) --user=under
+        }
+
         # from https://kubernetes.io/docs/setup/independent/install-kubeadm/
         yum install -y docker
         systemctl enable docker && systemctl start docker
@@ -128,8 +137,13 @@ objects:
           sudo cat /etc/kubernetes/admin.conf > ~/.kube/config
         
           sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.10.0/Documentation/kube-flannel.yml
+       
+          sudo kubectl create configmap -n kube-system kubevirt-config --from-literal debug.useEmulation=true || true
+          sudo -E kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/$KUBEVIRT_VER/kubevirt.yaml
+  
+          add_under_ctx
         
-          sudo kubectl create -f - <<EOM
+          sudo kubectl --context=under create -f - <<EOM
           apiVersion: v1
           kind: Secret
           metadata:
@@ -140,12 +154,12 @@ objects:
               $(kubeadm token create --print-join-command)
         EOM
             
-          sudo kubectl create configmap -n kube-system kubevirt-config --from-literal debug.useEmulation=true || true
-          sudo -E kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/$KUBEVIRT_VER/kubevirt.yaml
-        
+       
         else
         
-          kGetConfig() { sudo kubectl get secret kubevirt-kube-cluster-config-for-cluster-${CLUSTERNAME} $@ ; }
+          add_under_ctx
+
+          kGetConfig() { sudo kubectl --context=under get secret kubevirt-kube-cluster-config-for-cluster-${CLUSTERNAME} $@ ; }
           getJoinCmd() { kGetConfig -o=jsonpath='{.data.joinCommand}' | base64 -d ; }
           JOIN_CMD=""
           while [[ -z $JOIN_CMD ]];
