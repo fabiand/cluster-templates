@@ -26,7 +26,7 @@ objects:
       spec:
         domain:
           cpu:
-            cores: 2
+            cores: 4
           devices:
             disks:
             - disk:
@@ -40,6 +40,7 @@ objects:
             - disk:
                 bus: virtio
               name: sa
+              serial: underk8ssa
               volumeName: serviceaccount
             interfaces:
             - bridge: {}
@@ -48,18 +49,17 @@ objects:
             rng: {}
           resources:
             requests:
-              memory: 4G
+              memory: 2G
             limits:
-              memory: 5G
+              memory: 3G
         terminationGracePeriodSeconds: 0
         networks:
         - name: default
           pod: {}
         volumes:
         - name: rootvolume
-          ephemeral:
-            persistentVolumeClaim:
-              claimName: ${PVCNAME}
+          persistentVolumeClaim:
+            claimName: ${PVCNAME}
         - name: cloudinitvolume
           cloudInitNoCloud:
             secretRef:
@@ -85,7 +85,7 @@ objects:
       
       runcmd:
       - |
-        KUBERNETES_VER=v1.11.3
+        KUBERNETES_VER=v1.11.4
         KUBEVIRT_VER=v0.9.2
         
         PATH=$PATH:/usr/local/bin
