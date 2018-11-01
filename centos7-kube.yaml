@@ -95,14 +95,6 @@ objects:
       
         id
 
-        add_under_ctx() {
-          # Mount under cluster SA
-          mkdir -p /var/run/secrets/kubernetes.io/serviceaccount/
-          mount /dev/disk/by-id/virtio-underk8ssa /var/run/secrets/kubernetes.io/serviceaccount/
-          kubectl config set-cluster under --server=https://kubernetes.default.svc.cluster.local --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-          kubectl config set-credentials under --token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-          kubectl config set-context under --cluster=under --namespace=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace) --user=under
-        }
 
         # from https://kubernetes.io/docs/setup/independent/install-kubeadm/
         yum install -y docker
@@ -129,10 +121,18 @@ objects:
         EOF
         sysctl --system
         
+        # Mount under cluster SA
+        mkdir -p /var/run/secrets/kubernetes.io/serviceaccount/ || :
+        mount /dev/disk/by-id/virtio-underk8ssa /var/run/secrets/kubernetes.io/serviceaccount/ || :
+        sudo kubectl --kubeconfig=~/kubeconfig config set-cluster under --server=https://kubernetes.default.svc.cluster.local --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        sudo kubectl --kubeconfig=~/kubeconfig config set-credentials under --token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+        sudo kubectl --kubeconfig=~/kubeconfig config set-context under --cluster=under --namespace=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace) --user=under
+
         if [[ "$HOSTNAME" =~ .*-0 ]];
         then
         
           kubeadm init --pod-network-cidr=10.244.0.0/16
+          KUBEADMTOKEN=$(kubeadm token create --print-join-command)
         
           mkdir -p ~/.kube
           sudo cat /etc/kubernetes/admin.conf > ~/.kube/config
@@ -142,25 +142,22 @@ objects:
           sudo kubectl create configmap -n kube-system kubevirt-config --from-literal debug.useEmulation=true || true
           sudo -E kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/$KUBEVIRT_VER/kubevirt.yaml
   
-          add_under_ctx
-        
-          sudo kubectl --context=under create -f - <<EOM
+          sudo kubectl --kubeconfig=~/kubeconfig --context=under config view
+          sudo kubectl --kubeconfig=~/kubeconfig --context=under describe nodes
+          sudo kubectl --kubeconfig=~/kubeconfig --context=under apply -f - <<EOM
           apiVersion: v1
           kind: Secret
           metadata:
             name: kubevirt-kube-cluster-config-for-cluster-${CLUSTERNAME}
           stringData:
             master: $HOSTNAME
-            joinCommand: |
-              $(kubeadm token create --print-join-command)
+            joinCommand: $KUBEADMTOKEN
         EOM
             
        
         else
         
-          add_under_ctx
-
-          kGetConfig() { sudo kubectl --context=under get secret kubevirt-kube-cluster-config-for-cluster-${CLUSTERNAME} $@ ; }
+          kGetConfig() { sudo kubectl --kubeconfig=~/kubeconfig --context=under get secret kubevirt-kube-cluster-config-for-cluster-${CLUSTERNAME} $@ ; }
           getJoinCmd() { kGetConfig -o=jsonpath='{.data.joinCommand}' | base64 -d ; }
           JOIN_CMD=""
           while [[ -z $JOIN_CMD ]];
