@@ -25,6 +25,7 @@ objects:
       matchLabels:
         app: cluster # has to match .spec.template.metadata.labels
     replicas: 1 # by default is 1. 1 will be master
+    serviceName: cluster
     template:
       metadata:
         labels:
@@ -32,7 +33,7 @@ objects:
       spec:
         containers:
         - name: vmctl
-          image: quay.io/fabiand/vmctl:latest
+          image: quay.io/fabiand/vmctl:v0.1.0
           args:
           - "${VMNAME}"
           volumeMounts:
@@ -117,14 +118,13 @@ objects:
       runcmd:
       - |
         KUBERNETES_VER=v1.11.4
-        KUBEVIRT_VER=v0.9.2
+        KUBEVIRT_VER=v0.9.3
         
         PATH=$PATH:/usr/local/bin
         
         set -ex
       
         id
-
 
         # from https://kubernetes.io/docs/setup/independent/install-kubeadm/
         yum install -y docker
@@ -197,7 +197,7 @@ objects:
             sleep 6
           done
           eval "sudo $JOIN_CMD"
-        
+
         fi
 
 parameters:
