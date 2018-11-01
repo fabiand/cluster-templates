@@ -137,7 +137,8 @@ objects:
           mkdir -p ~/.kube
           sudo cat /etc/kubernetes/admin.conf > ~/.kube/config
         
-          sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.10.0/Documentation/kube-flannel.yml
+          # kubernetes/kubeadm#1031
+          sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
        
           sudo kubectl create configmap -n kube-system kubevirt-config --from-literal debug.useEmulation=true || true
           sudo -E kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/$KUBEVIRT_VER/kubevirt.yaml
