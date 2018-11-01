@@ -167,9 +167,10 @@ objects:
             JOIN_CMD=$(getJoinCmd)
             sleep 6
           done
-          eval "sudo $(JOIN_CMD)"
+          eval "sudo $JOIN_CMD"
         
         fi
+
 parameters:
 - name: VMNAME
   description: Name of the new VM
