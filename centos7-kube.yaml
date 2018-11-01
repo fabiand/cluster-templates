@@ -160,20 +160,25 @@ objects:
 
         if [[ "$HOSTNAME" =~ .*-0 ]];
         then
-        
+          sudo kubectl --kubeconfig=~/kubeconfig --context=under delete secret kubevirt-kube-cluster-config-for-cluster-${CLUSTERNAME} || :
+
           kubeadm init --pod-network-cidr=10.244.0.0/16
-          KUBEADMTOKEN=$(kubeadm token create --print-join-command)
         
           mkdir -p ~/.kube
           sudo cat /etc/kubernetes/admin.conf > ~/.kube/config
         
-          sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.10.0/Documentation/kube-flannel.yml
+          # Remove taints in order to allow setup on single master - and then scale up
+          sudo kubectl taint nodes --all node-role.kubernetes.io/master-
+
+          sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/bc79dd1505b0c8681ece4de4c0d86c5cd2643275/Documentation/kube-flannel.yml
        
           sudo kubectl create configmap -n kube-system kubevirt-config --from-literal debug.useEmulation=true || true
           sudo -E kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/$KUBEVIRT_VER/kubevirt.yaml
   
           sudo kubectl --kubeconfig=~/kubeconfig --context=under config view
           sudo kubectl --kubeconfig=~/kubeconfig --context=under describe nodes
+          while true ; do {
+          KUBEADMTOKEN=$(kubeadm token create --print-join-command)
           sudo kubectl --kubeconfig=~/kubeconfig --context=under apply -f - <<EOM
           apiVersion: v1
           kind: Secret
@@ -183,6 +188,8 @@ objects:
             master: $HOSTNAME
             joinCommand: $KUBEADMTOKEN
         EOM
+          sleep 60
+          } ; done
             
        
         else
