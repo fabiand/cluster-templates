@@ -16,12 +16,42 @@ metadata:
     openshift.io/support-url: "https://github.com/fabiand/common-templates/issues"
     template.openshift.io/bindable: "false"
 objects:
+- apiVersion: apps/v1
+  kind: StatefulSet
+  metadata:
+    name: cluster
+  spec:
+    selector:
+      matchLabels:
+        app: cluster # has to match .spec.template.metadata.labels
+    replicas: 1 # by default is 1. 1 will be master
+    template:
+      metadata:
+        labels:
+          app: cluster # has to match .spec.selector.matchLabels
+      spec:
+        containers:
+        - name: vmctl
+          image: quay.io/fabiand/vmctl:latest
+          args:
+          - "${VMNAME}"
+          volumeMounts:
+          - name: podinfo
+            mountPath: /etc/podinfo
+        serviceAccountName: cluster-creator
+        volumes:
+        - name: podinfo  # For affinity
+          downwardAPI:
+            items:
+            - path: "name"
+              fieldRef:
+                fieldPath: metadata.name
 - apiVersion: kubevirt.io/v1alpha2
   kind: VirtualMachine
   metadata:
     name: ${VMNAME}
   spec:
-    running: true
+    running: false
     template:
       spec:
         domain:
@@ -173,9 +203,8 @@ objects:
 
 parameters:
 - name: VMNAME
-  description: Name of the new VM
-  generate: expression
-  from: "kubenode-[a-z0-9]{6}"
+  description: Name of the new VM _template_
+  value: kubenode
   required: true
 - name: PVCNAME
   description: Name of the PVC with the disk image
