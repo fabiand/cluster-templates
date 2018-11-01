@@ -11,3 +11,4 @@ Hints:
 - minikube
 - `oc`
 - kubevirt
+- One over cluster per namespace
