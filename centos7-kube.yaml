@@ -162,11 +162,11 @@ objects:
         then
           sudo kubectl --kubeconfig=~/kubeconfig --context=under delete secret kubevirt-kube-cluster-config-for-cluster-${CLUSTERNAME} || :
 
-          kubeadm config images pull --feature-gates CoreDNS=false
+                  #kubeadm config images pull --feature-gates CoreDNS=false
           # avoid cycling dependency
-          for image in $(curl https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml | egrep -o "image: .*" | sort -u | sed "s/image: //"); do docker pull $image ; done
+          #for image in $(curl https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml | egrep -o "image: .*" | sort -u | sed "s/image: //"); do docker pull $image ; done
           # coredns is getting killed due to oom
-          kubeadm init --pod-network-cidr=10.244.0.0/16 --service-cidr=10.97.0.0/12 --feature-gates CoreDNS=false
+          kubeadm init --pod-network-cidr=10.244.0.0/16 --service-cidr=10.196.0.0/12 --feature-gates CoreDNS=false
         
           mkdir -p ~/.kube
           sudo cat /etc/kubernetes/admin.conf > ~/.kube/config
@@ -194,7 +194,7 @@ objects:
           stringData:
             master: $HOSTNAME
             joinCommand: $KUBEADMTOKEN
-          EOM
+        EOM
        
         else
         
@@ -210,7 +210,13 @@ objects:
           eval "sudo $JOIN_CMD"
 
         fi
-
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    name: kubeadm-join-${CLUSTERNAME}
+  stringData:
+    master: $HOSTNAME
+    joinCommand: ""
 parameters:
 - name: VMNAME
   description: Name of the new VM _template_
