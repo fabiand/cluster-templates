@@ -4,7 +4,14 @@ A simple template to bring up Kubernetes clusters using KubeVirt and likely vmct
 
 # Usage
 
-TBD
+```bash
+
+$ oc process --local -f centos7-kube.yaml PVCNAME=centos75 | kubectl apply -f-
+statefulset.apps/cluster created
+virtualmachine.kubevirt.io/kubenode created
+secret/kubenode-bootstrap-for-cluster-kubernetes created
+$
+```
 
 Hints:
 
