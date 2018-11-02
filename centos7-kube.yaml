@@ -19,13 +19,13 @@ objects:
 - apiVersion: apps/v1
   kind: StatefulSet
   metadata:
-    name: cluster
+    name: ${CLUSTERNAME}
   spec:
     selector:
       matchLabels:
         app: cluster # has to match .spec.template.metadata.labels
     replicas: 1 # by default is 1. 1 will be master
-    serviceName: cluster
+    serviceName: node
     template:
       metadata:
         labels:
@@ -95,14 +95,14 @@ objects:
         - name: cloudinitvolume
           cloudInitNoCloud:
             secretRef:
-              name: kubenode-bootstrap-for-cluster-${CLUSTERNAME}
+              name: cloud-config-for-${CLUSTERNAME}
         - serviceAccount:
             serviceAccountName: cluster-creator
           name: serviceaccount
 - apiVersion: v1
   kind: Secret
   metadata:
-    name: kubenode-bootstrap-for-cluster-${CLUSTERNAME}
+    name: cloud-config-for-${CLUSTERNAME}
   stringData:
     userdata: |
       #cloud-config
@@ -183,7 +183,7 @@ objects:
           apiVersion: v1
           kind: Secret
           metadata:
-            name: kubevirt-kube-cluster-config-for-cluster-${CLUSTERNAME}
+            name: kubeadm-join-${CLUSTERNAME}
           stringData:
             master: $HOSTNAME
             joinCommand: $KUBEADMTOKEN
@@ -194,7 +194,7 @@ objects:
        
         else
         
-          kGetConfig() { sudo kubectl --kubeconfig=~/kubeconfig --context=under get secret kubevirt-kube-cluster-config-for-cluster-${CLUSTERNAME} $@ ; }
+          kGetConfig() { sudo kubectl --kubeconfig=~/kubeconfig --context=under get secret kubeadm-join-${CLUSTERNAME} $@ ; }
           getJoinCmd() { kGetConfig -o=jsonpath='{.data.joinCommand}' | base64 -d ; }
           JOIN_CMD=""
           while [[ -z $JOIN_CMD ]];
