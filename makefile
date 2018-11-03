@@ -1,6 +1,6 @@
 
 node-0:
-	oc process --local -f centos7-kube.yaml PVCNAME=centos7 NAME=node-0 | kubectl apply -f -
+	oc process --local -f kubeadm.yaml PVCNAME=centos7 NAME=node-0 | kubectl apply -f -
 
 add-sa:
 	kubectl create serviceaccount cluster-creator
@@ -9,9 +9,11 @@ add-sa:
 
 create-centos7-pvc:
 #	bash create-minikube-pvc.sh centos7 8.1G /var/tmp/centos7-pv | kubectl apply -f -
+	kubectl delete job virtbuilder || :
+	kubectl delete pvc centos75test || :
 	oc process --local -f https://raw.githubusercontent.com/fabiand/virtbuilder/master/pvc-template.yaml NAME=virtbuilder-cache SIZE=10G | kubectl apply -f -
-	oc process --local -f https://raw.githubusercontent.com/fabiand/virtbuilder/master/pvc-template.yaml NAME=centos75 SIZE=11G | kubectl apply -f -
-	oc process --local -f https://raw.githubusercontent.com/fabiand/virtbuilder/master/job-template.yaml OSNAME=centos-7.5 PVCNAME=centos75 DISKSIZE=10G | kubectl apply -f -
+	oc process --local -f https://raw.githubusercontent.com/fabiand/virtbuilder/master/pvc-template.yaml NAME=centos75test SIZE=11G | kubectl apply -f -
+	oc process --local -f https://raw.githubusercontent.com/fabiand/virtbuilder/master/job-template.yaml OSNAME=centos-7.5 PVCNAME=centos75test DISKSIZE=10G | kubectl apply -f -
 
 start-minikube:
 	minikube start --vm-driver=kvm2 --memory 12000 --cpus 8 --kubernetes-version v1.11.4 --disk-size 100G
