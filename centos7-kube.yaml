@@ -80,9 +80,9 @@ objects:
             rng: {}
           resources:
             requests:
-              memory: 1.5G
-            limits:
               memory: 2G
+            limits:
+              memory: 2.5G
         terminationGracePeriodSeconds: 0
         networks:
         - name: default
@@ -119,18 +119,17 @@ objects:
       - |
         KUBERNETES_VER=v1.11.4
         KUBEVIRT_VER=v0.9.3
-        
         PATH=$PATH:/usr/local/bin
         
         set -ex
-      
         id
 
         # from https://kubernetes.io/docs/setup/independent/install-kubeadm/
-        yum install -y docker
-        systemctl enable docker && systemctl start docker
-        
-        cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+        {
+          yum install -y docker
+          systemctl enable --now docker
+          
+          cat <<EOF > /etc/yum.repos.d/kubernetes.repo
         [kubernetes]
         name=Kubernetes
         baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
@@ -140,76 +139,72 @@ objects:
         gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
         exclude=kube*
         EOF
-        
-        setenforce 0
-        yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
-        systemctl enable kubelet && systemctl start kubelet
-        
-        cat <<EOF >  /etc/sysctl.d/k8s.conf
-        net.bridge.bridge-nf-call-ip6tables = 1
-        net.bridge.bridge-nf-call-iptables = 1
+          
+          setenforce 0
+          yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+          systemctl enable --now kubelet
+          
+          cat <<EOF >  /etc/sysctl.d/k8s.conf
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.bridge.bridge-nf-call-iptables = 1
         EOF
-        sysctl --system
+          sysctl --system
+        }
         
-        # Mount under cluster SA
-        mkdir -p /var/run/secrets/kubernetes.io/serviceaccount/ || :
-        mount /dev/disk/by-id/virtio-underk8ssa /var/run/secrets/kubernetes.io/serviceaccount/ || :
-        sudo kubectl --kubeconfig=~/kubeconfig config set-cluster under --server=https://kubernetes.default.svc.cluster.local --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-        sudo kubectl --kubeconfig=~/kubeconfig config set-credentials under --token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-        sudo kubectl --kubeconfig=~/kubeconfig config set-context under --cluster=under --namespace=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace) --user=under
+        # Setup config to access under cluster
+        alias underkubectl="kubectl --kubeconfig=~/underkubeconfig"
+        {
+          mkdir -p /var/run/secrets/kubernetes.io/serviceaccount/ || :
+          mount /dev/disk/by-id/virtio-underk8ssa /var/run/secrets/kubernetes.io/serviceaccount/ || :
+          underkubectl config set-cluster under --server=https://kubernetes.default.svc.cluster.local --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          underkubectl config set-credentials under --token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+          underkubectl config set-context under --cluster=under --namespace=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace) --user=under
+          underkubectl config use-context under
+        }
 
         if [[ "$HOSTNAME" =~ .*-0 ]];
         then
-          sudo kubectl --kubeconfig=~/kubeconfig --context=under delete secret kubevirt-kube-cluster-config-for-cluster-${CLUSTERNAME} || :
+          # Cleanup any old join token
+          underkubectl delete secret kubeadm-join-${CLUSTERNAME} || :
 
-                  #kubeadm config images pull --feature-gates CoreDNS=false
-          # avoid cycling dependency
-          #for image in $(curl https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml | egrep -o "image: .*" | sort -u | sed "s/image: //"); do docker pull $image ; done
+          ########
+          #
+          # Kubernetes with kubeadm
           # coredns is getting killed due to oom
           kubeadm init --pod-network-cidr=10.244.0.0/16 --service-cidr=10.196.0.0/12 --feature-gates CoreDNS=false
-        
-          mkdir -p ~/.kube
-          sudo cat /etc/kubernetes/admin.conf > ~/.kube/config
-        
+
+          # Allow easy kubectl login
+          mkdir ~/.kube/
+          cp /etc/kubernetes/admin.conf > ~/.kube/config
+
           # Remove taints in order to allow setup on single master - and then scale up
-          sudo kubectl taint nodes --all node-role.kubernetes.io/master-
+          kubectl taint nodes --all node-role.kubernetes.io/master-
 
+          # Network plugin
           # http://github.com/kubernetes/kubeadm/issues/1179
-          #sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/bc79dd1505b0c8681ece4de4c0d86c5cd2643275/Documentation/kube-flannel.yml
-          sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
-          #sudo kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(sudo kubectl version | base64 | tr -d '\n')"
+          #kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/bc79dd1505b0c8681ece4de4c0d86c5cd2643275/Documentation/kube-flannel.yml
+          kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
        
-          sudo kubectl create configmap -n kube-system kubevirt-config --from-literal debug.useEmulation=true || true
-          sudo -E kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/$KUBEVIRT_VER/kubevirt.yaml
+          # KubeVirt
+          kubectl create configmap -n kube-system kubevirt-config --from-literal debug.useEmulation=true || true
+          kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/$KUBEVIRT_VER/kubevirt.yaml
+          #
+          ########
   
-          #sudo kubectl --kubeconfig=~/kubeconfig --context=under config view
-          #sudo kubectl --kubeconfig=~/kubeconfig --context=under describe nodes
-
+          # Publish join credentials
           KUBEADMTOKEN=$(kubeadm token create --ttl 1h --print-join-command)
-          sudo kubectl --kubeconfig=~/kubeconfig --context=under apply -f - <<EOM
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: kubeadm-join-${CLUSTERNAME}
-          stringData:
-            master: $HOSTNAME
-            joinCommand: $KUBEADMTOKEN
-        EOM
+          underkubectl create secret generic kubeadm-join-${CLUSTERNAME} --from-literal="joinCommand=$KUBEADMTOKEN"
        
         else
         
-          kGetConfig() { sudo kubectl --kubeconfig=~/kubeconfig --context=under get secret kubeadm-join-${CLUSTERNAME} $@ ; }
+          kGetConfig() { underkubectl get secret kubeadm-join-${CLUSTERNAME} $@ ; }
           getJoinCmd() { kGetConfig -o=jsonpath='{.data.joinCommand}' | base64 -d ; }
-          JOIN_CMD=""
-          while [[ -z $JOIN_CMD ]];
-          do
-            echo -n .
-            JOIN_CMD=$(getJoinCmd)
-            sleep 6
-          done
-          eval "sudo $JOIN_CMD"
+
+          while [[ -z "$(getJoinCmd)" ]]; do echo -n . ; sleep 6 ; done
+          eval "sudo $(getJoinCmd)"
 
         fi
+
 - apiVersion: v1
   kind: Secret
   metadata:
