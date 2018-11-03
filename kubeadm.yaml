@@ -152,7 +152,7 @@ objects:
         }
         
         # Setup config to access under cluster
-        alias underkubectl="kubectl --kubeconfig=~/underkubeconfig"
+        alias underkubectl="kubectl --kubeconfig=$HOME/underkubeconfig"
         {
           mkdir -p /var/run/secrets/kubernetes.io/serviceaccount/ || :
           mount /dev/disk/by-id/virtio-underk8ssa /var/run/secrets/kubernetes.io/serviceaccount/ || :
@@ -172,10 +172,11 @@ objects:
           # Kubernetes with kubeadm
           # coredns is getting killed due to oom
           kubeadm init --pod-network-cidr=10.244.0.0/16 --service-cidr=10.196.0.0/12 --feature-gates CoreDNS=false
+          sleep 6
 
           # Allow easy kubectl login
-          mkdir ~/.kube/
-          cp /etc/kubernetes/admin.conf > ~/.kube/config
+          mkdir $HOME/.kube/
+          cp -v /etc/kubernetes/admin.conf $HOME/.kube/config
 
           # Remove taints in order to allow setup on single master - and then scale up
           kubectl taint nodes --all node-role.kubernetes.io/master-
