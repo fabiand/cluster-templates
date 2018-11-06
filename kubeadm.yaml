@@ -194,7 +194,9 @@ objects:
   
           # Publish join credentials
           KUBEADMTOKEN=$(kubeadm token create --ttl 1h --print-join-command)
-          underkubectl create secret generic kubeadm-join-${CLUSTERNAME} --from-literal="joinCommand=$KUBEADMTOKEN"
+          underkubectl create secret generic kubeadm-join-${CLUSTERNAME} \
+            --from-literal="joinCommand=$KUBEADMTOKEN" \
+            --from-file="kubeconfig=/etc/kubernetes/admin.conf"
        
         else
         
