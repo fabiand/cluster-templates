@@ -155,6 +155,7 @@ objects:
         KUBERNETES_VER=v1.11.4
         KUBEVIRT_VER=v0.9.3
         PATH=$PATH:/usr/local/bin
+        HOME=/root
         
         set -ex
         id
@@ -210,20 +211,20 @@ objects:
           sleep 6
 
           # Allow easy kubectl login
-          mkdir $HOME/.kube/
+          mkdir -p $HOME/.kube/
           cp -v /etc/kubernetes/admin.conf $HOME/.kube/config
 
           # Remove taints in order to allow setup on single master - and then scale up
-          kubectl taint nodes --all node-role.kubernetes.io/master-
+          sudo kubectl taint nodes --all node-role.kubernetes.io/master-
 
           # Network plugin
           # http://github.com/kubernetes/kubeadm/issues/1179
           #kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/bc79dd1505b0c8681ece4de4c0d86c5cd2643275/Documentation/kube-flannel.yml
-          kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+          sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
        
           # KubeVirt
-          kubectl create configmap -n kube-system kubevirt-config --from-literal debug.useEmulation=true || true
-          kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/$KUBEVIRT_VER/kubevirt.yaml
+          sudo kubectl create configmap -n kube-system kubevirt-config --from-literal debug.useEmulation=true || true
+          sudo kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/$KUBEVIRT_VER/kubevirt.yaml
           #
           ########
   
