@@ -47,6 +47,28 @@ objects:
             - path: "name"
               fieldRef:
                 fieldPath: metadata.name
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: ${CLUSTERNAME}-client
+  spec:
+    automountServiceAccountToken: false
+    containers:
+    - name: vmctl
+      image: quay.io/fabiand/vmctl:v0.1.0
+      command: ["/usr/bin/sleep"]
+      args:
+      - "inf"
+      volumeMounts:
+      - name: clusterinfo
+        mountPath: /root/.kube
+    volumes:
+    - name: clusterinfo
+      secret:
+        secretName: kubeadm-join-${CLUSTERNAME}
+        items:
+        - key: kubeconfig
+          path: config
 - apiVersion: kubevirt.io/v1alpha2
   kind: VirtualMachine
   metadata:
