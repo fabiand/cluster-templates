@@ -24,7 +24,7 @@ objects:
     selector:
       matchLabels:
         app: cluster # has to match .spec.template.metadata.labels
-    replicas: ${REPLICAS} # by default is 1. 1 will be master
+    replicas: ${{REPLICAS}} # by default is 1. 1 will be master
     serviceName: node
     template:
       metadata:
@@ -225,9 +225,9 @@ parameters:
   required: true
 - name: CLUSTERNAME
   description: Name of the cluster to create or join
-  value: kubernetes
+  value: kubeadm-cluster
 - name: REPLICAS
   description: Number of cluster nodes
-  value: 2
+  value: "2"
 - name: SSH_PUBKEY
   description: Public key to grant access to
